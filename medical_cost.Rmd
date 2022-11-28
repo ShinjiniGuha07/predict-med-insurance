@@ -27,7 +27,7 @@ The dataset contains the following:
 6. region: the region where the person is located
 7. charges: yearly charges billed by the insurance company
 
-```{r cars}
+```{r load data}
 med_data <- read.csv('insurance.csv')
 colSums(is.na(med_data))  #no NA values
 ```
