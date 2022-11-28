@@ -1,0 +1,140 @@
+---
+title: "Medical Costs Regression"
+author: "Shinjini Guha"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r Setup, message=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+## Set-up
+
+In this project we will be using linear regression to predict the yearly insurance charges of individuals. We will be using the following dataset from Kaggle: <https://www.kaggle.com/datasets/mirichoi0218/insurance>
+
+The dataset contains the following:
+
+1. age: age of the individual
+2. sex: male/female (nominal)
+3. children: number of dependants covered in insurance
+4. bmi: body mass index
+5. smoker: whether the person is a smoker or not (nominal)
+6. region: the region where the person is located
+7. charges: yearly charges billed by the insurance company
+
+```{r cars}
+med_data <- read.csv('insurance.csv')
+colSums(is.na(med_data))  #no NA values
+```
+
+dependent variable : charges
+
+independent variable: age, smoker, region, sex, children
+
+## Exploratory data analysis
+
+
+#### Checking the relation of "Charges" to the numeric independent variables
+
+```{r numeric variables}
+
+ggplot(med_data, aes(x=age, y=charges)) + 
+  geom_point(color = 'blue')  + xlab("Age") +
+  ylab("Charges($)") +
+  ggtitle("Charges vs. Age") 
+
+ggplot(med_data, aes(x=bmi, y=charges)) + 
+  geom_point(color = 'red')  + xlab("BMI") +
+  ylab("Charges($)") +
+  ggtitle("Charges vs. BMI") 
+
+ggplot(med_data, aes(x=children, y=charges)) + 
+  geom_point(color = 'green')  + xlab("Number of dependants") +
+  ylab("Charges($)") +
+  ggtitle("Charges vs. No. of Dependents") 
+
+```
+Findings :
+
+1. Charges vs. Age: There is a general trend that shows that the older you get, the more is your hospital expenses. But its interesting to see 3 categories in this.
+
+2. Charges vs. BMI: The relation is less clearer than age, but it does have a 2 separate linear relations.
+
+3. Charges vs. No. of Dependents: As the number of dependent children increases the yearly charges reduces. however, there aren't enough data points at 5 children, to base that on.
+
+
+
+Next, we will check the correlation coefficient of each
+
+```{r correlation}
+
+numeric_med_data <- select_if(med_data, is.numeric) 
+predictors <- names(dplyr::select(numeric_med_data, - charges))
+
+for (p in predictors) {
+  correlation <- cor(med_data$charges, med_data[p])
+  print(paste("For predictor " , p, 
+              ": Correlation: ", correlation ))
+}
+
+```
+
+Findings : 
+
+The correlation is not very high but all three variables show positive relation to "Charges"
+
+#### Checking the relation of "Charges" to the nominal independent variables
+
+```{r nominal variables}
+smoker = as.factor(med_data$smoker)
+sex = as.factor(med_data$sex)
+region = as.factor(med_data$region)
+
+boxplot(med_data$charges ~ smoker, main ='Smoker')
+boxplot(med_data$charges ~ sex, main ='sex')
+boxplot(med_data$charges ~ region, main ='Region')
+
+```
+
+Findings : 
+
+1. Smoker: The avg. charges for a smoker is significantly higher than a non-smoker, so this seems like an important predictor.
+2. Sex: The avg. for male and female is almost the same. 
+3. Region: The avg. for the regions are almost the same.
+
+## Best fit model using forward selection
+
+```{r model}
+intercept_model <- lm(charges ~ 1, data = med_data)
+full_model <- lm(charges ~ ., data = med_data)
+
+forward_model <- step(intercept_model,
+                      direction = 'forward',
+                      scope = list(lower = formula(intercept_model),
+                                   upper = formula(full_model)),
+                      trace = 0)
+
+print(paste("AIC interceprt model :" , AIC(intercept_model)))
+print(paste("AIC full model :" , AIC(full_model)))
+print(paste("AIC forward model :" , AIC(forward_model)))
+
+
+summary(full_model)
+summary(forward_model)
+```
+
+
+## Summary
+
+Based on the AIC values, the best fit model is the forward one (lowest AIC). According to it's summary, 'Smoker' , 'Age', 'BMI' and 'Number of dependent children' are the most significant predictors. Even the region (southeast and southwest) are significant enough to reject the null hypothesis. 
+
+The full model also has a comparable AIC value, but when we compare that with the forward model we see that the full model also considers the sex as one of the predictors which has a high p-value and hence is not significant for the dependent variable.
+
+
+
+
